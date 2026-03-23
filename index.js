@@ -754,22 +754,30 @@ var adminPage = `
             <p class="text-sm text-indigo-600 mt-1">点击查看如何通过外部接口触发系统通知</p>
           </div>
         </div>
-        <button type="button" class="text-indigo-500 hover:text-indigo-700 mt-1">
-          <i class="fas fa-chevron-down transition-transform duration-300" id="apiInstructionIcon"></i>
+        <button type="button" class="text-indigo-500 hover:text-indigo-700 mt-1" aria-expanded="true">
+          <i class="fas fa-chevron-down transition-transform duration-300" id="apiInstructionIcon" style="transform: rotate(180deg);"></i>
         </button>
       </div>
-      <div class="mt-4 text-sm text-indigo-700 hidden border-t border-indigo-200 pt-4" id="apiInstructionContent">
-        <p class="mb-2"><strong>Webhook URL:</strong> <code class="bg-indigo-100 px-1 py-0.5 rounded">https://&lt;你的域名&gt;/api/notify/tv?key=&lt;你的外部调用密钥&gt;</code> (POST请求)</p>
-        <p class="mb-2"><strong>JSON 数据格式模板:</strong></p>
-        <pre class="bg-indigo-900 text-indigo-100 p-3 rounded text-xs overflow-x-auto leading-relaxed"><code>{
+      <div class="mt-4 text-sm text-indigo-700 border-t border-indigo-200 pt-4" id="apiInstructionContent">
+        <p class="mb-2"><strong>Webhook URL:</strong> <code class="bg-indigo-100 px-1 py-0.5 rounded" id="webhookUrlText">https://&lt;你的域名&gt;/api/notify/tv</code> (POST请求)</p>
+        
+        <div class="flex justify-between items-end mb-2 mt-4">
+          <p class="mb-0 text-base"><strong>JSON 数据格式模板:</strong></p>
+          <button id="copyJsonBtn" type="button" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg shadow-lg font-bold flex items-center transition-all duration-200 transform hover:scale-105">
+            <i class="fas fa-copy mr-2 text-xl"></i> <span class="text-lg">一键复制 JSON</span>
+          </button>
+        </div>
+        <pre id="jsonTemplateContent" class="bg-indigo-900 text-indigo-100 p-4 rounded-lg text-sm overflow-x-auto leading-relaxed shadow-inner"><code>{
+  "key": "<span id="apiKeyValue">&lt;加载中...&gt;</span>",
   "title": "自定义通知标题",
   "content": "这里是你想发送的具体通知内容", 
   "symbol": "{{ticker}}", 
+  "interval": "{{interval}}", 
   "price": "{{close}}",   
   "time": "{{timenow}}"   
 }</code></pre>
         <ul class="list-disc pl-5 mt-3 text-xs text-indigo-600 space-y-1">
-          <li><strong>密钥配置：</strong>调用前请前往 <strong>系统配置 -> 第三方 API 访问令牌</strong> 中设置密钥。</li>
+          <li><strong>密钥说明：</strong>上方的 <code>key</code> 已自动读取当前系统变量。如需修改，请前往 Cloudflare Worker 的 <strong>设置 -> 变量和机密</strong> 中修改 <code>INCOMING_API_KEY</code> 变量。</li>
           <li><strong>必填参数：</strong>JSON 中必须包含 <code>content</code> 字段。</li>
           <li><strong>⚠️ TradingView 设置注意：</strong>占位符(如 <code>{{ticker}}</code>)必须单独作为字段值，<strong>不要与中文写在同一行</strong>，具体文字请写在 <code>content</code> 字段中。</li>
         </ul>
@@ -1898,6 +1906,29 @@ console.log('expiry.toString():', expiry.toString());
     
     window.addEventListener('load', loadSubscriptions);
     
+    // 自动加载真实的 API Key
+    async function loadApiKey() {
+      try {
+        const response = await fetch('/api/config');
+        if (response.ok) {
+          const config = await response.json();
+          const apiKeyValue = document.getElementById('apiKeyValue');
+          if (apiKeyValue) {
+            apiKeyValue.textContent = config.INCOMING_API_KEY || "未设置_请在环境变量中配置_INCOMING_API_KEY";
+          }
+        }
+      } catch (e) {
+        console.error('获取 API Key 失败', e);
+      }
+    }
+    window.addEventListener('load', loadApiKey);
+    
+    // 动态更新 Webhook URL 域名
+    const webhookUrlText = document.getElementById('webhookUrlText');
+    if (webhookUrlText) {
+      webhookUrlText.textContent = window.location.origin + '/api/notify/tv';
+    }
+    
     // API 说明展开/折叠逻辑
     const apiToggle = document.getElementById('apiInstructionToggle');
     if (apiToggle) {
@@ -1906,6 +1937,33 @@ console.log('expiry.toString():', expiry.toString());
         const icon = document.getElementById('apiInstructionIcon');
         content.classList.toggle('hidden');
         icon.style.transform = content.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
+      });
+    }
+
+    // 一键复制 JSON
+    const copyJsonBtn = document.getElementById('copyJsonBtn');
+    if (copyJsonBtn) {
+      copyJsonBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const jsonText = document.getElementById('jsonTemplateContent').textContent;
+        navigator.clipboard.writeText(jsonText).then(() => {
+          const originalHtml = copyJsonBtn.innerHTML;
+          copyJsonBtn.innerHTML = '<i class="fas fa-check-circle mr-2 text-xl"></i> <span class="text-lg">\u590D\u5236\u6210\u529F!</span>';
+          copyJsonBtn.classList.replace('bg-indigo-600', 'bg-green-500');
+          copyJsonBtn.classList.replace('hover:bg-indigo-700', 'hover:bg-green-600');
+          
+          if (typeof showToast === 'function') {
+            showToast('JSON 模板已复制到剪贴板', 'success');
+          }
+          
+          setTimeout(() => {
+            copyJsonBtn.innerHTML = originalHtml;
+            copyJsonBtn.classList.replace('bg-green-500', 'bg-indigo-600');
+            copyJsonBtn.classList.replace('hover:bg-green-600', 'hover:bg-indigo-700');
+          }, 2000);
+        }).catch(err => {
+          console.error('\u590D\u5236\u5931\u8D25', err);
+        });
       });
     }
   <\/script>
@@ -2575,7 +2633,32 @@ var api = {
             const symbol = body.symbol || "";
             const price = body.price || "";
             const time = body.time || "";
+            const interval = body.interval || "";
             
+            // 智能转换 TradingView 的周期格式
+            let formattedInterval = interval;
+            if (interval) {
+              const str = String(interval).trim().toUpperCase();
+              // 如果是纯数字，TradingView 默认单位是分钟
+              if (/^\d+$/.test(str)) {
+                const mins = parseInt(str, 10);
+                if (mins >= 60 && mins % 60 === 0) {
+                  formattedInterval = (mins / 60) + "小时";
+                } else {
+                  formattedInterval = mins + "分钟";
+                }
+              } else {
+                // 如果带字母（如 1D, 1W, 1M）
+                const match = str.match(/^(\d+)([A-Z])$/);
+                if (match) {
+                  const num = match[1];
+                  const unit = match[2];
+                  const unitMap = { 'D': '天', 'W': '周', 'M': '个月', 'S': '秒' };
+                  formattedInterval = num + (unitMap[unit] || unit);
+                }
+              }
+            }
+
             if (!title && symbol) {
               title = `TradingView \u8B66\u62A5: ${symbol}`;
             }
@@ -2585,6 +2668,7 @@ var api = {
             
             let extraInfo = [];
             if (symbol) extraInfo.push(`\u4EA4\u6613\u5BF9: ${symbol}`);
+            if (interval) extraInfo.push(`\u5468\u671F: ${formattedInterval}`);
             if (price) extraInfo.push(`\u5F53\u524D\u4EF7\u683C: ${price}`);
             if (time) extraInfo.push(`\u89E6\u53D1\u65F6\u95F4: ${time}`);
             
