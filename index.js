@@ -392,7 +392,7 @@ var loginPage = `
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>\u8BA2\u9605\u7BA1\u7406\u7CFB\u7EDF</title>
+  <title>API 消息中转中心</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
   <style>
@@ -426,8 +426,8 @@ var loginPage = `
 <body class="login-container flex items-center justify-center">
   <div class="login-box p-8 rounded-xl w-full max-w-md">
     <div class="text-center mb-8">
-      <h1 class="text-2xl font-bold text-gray-800"><i class="fas fa-calendar-check mr-2"></i>\u8BA2\u9605\u7BA1\u7406\u7CFB\u7EDF</h1>
-      <p class="text-gray-600 mt-2">\u767B\u5F55\u7BA1\u7406\u60A8\u7684\u8BA2\u9605\u63D0\u9192</p>
+      <h1 class="text-2xl font-bold text-gray-800"><i class="fas fa-paper-plane mr-2"></i>API 消息中转中心</h1>
+      <p class="text-gray-600 mt-2">登录管理您的 API 调用与通知转发配置</p>
     </div>
     
     <form id="loginForm" class="space-y-6">
@@ -499,7 +499,7 @@ var adminPage = `
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>\u8BA2\u9605\u7BA1\u7406\u7CFB\u7EDF</title>
+  <title>API 消息中转中心</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
   <style>
@@ -725,8 +725,8 @@ var adminPage = `
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex justify-between h-16">
         <div class="flex items-center">
-          <i class="fas fa-calendar-check text-indigo-600 text-2xl mr-2"></i>
-          <span class="font-bold text-xl text-gray-800">\u8BA2\u9605\u7BA1\u7406\u7CFB\u7EDF</span>
+        <i class="fas fa-paper-plane text-indigo-600 text-2xl mr-2"></i>
+        <span class="font-bold text-xl text-gray-800">API 消息中转中心</span>
         </div>
         <div class="flex items-center space-x-4">
           <a href="/admin" class="text-indigo-600 border-b-2 border-indigo-600 px-3 py-2 rounded-md text-sm font-medium">
@@ -744,6 +744,38 @@ var adminPage = `
   </nav>
   
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- API 调用说明区块 -->
+    <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-4 mb-6 shadow-sm">
+      <div class="flex items-start justify-between cursor-pointer" id="apiInstructionToggle">
+        <div class="flex items-center">
+          <i class="fas fa-plug text-indigo-500 mt-1 mr-3 text-lg"></i>
+          <div>
+            <h3 class="text-md font-medium text-indigo-800">API 调用说明 (支持 TradingView Webhook 等外部调用)</h3>
+            <p class="text-sm text-indigo-600 mt-1">点击查看如何通过外部接口触发系统通知</p>
+          </div>
+        </div>
+        <button type="button" class="text-indigo-500 hover:text-indigo-700 mt-1">
+          <i class="fas fa-chevron-down transition-transform duration-300" id="apiInstructionIcon"></i>
+        </button>
+      </div>
+      <div class="mt-4 text-sm text-indigo-700 hidden border-t border-indigo-200 pt-4" id="apiInstructionContent">
+        <p class="mb-2"><strong>Webhook URL:</strong> <code class="bg-indigo-100 px-1 py-0.5 rounded">https://&lt;你的域名&gt;/api/notify/tv?key=&lt;你的外部调用密钥&gt;</code> (POST请求)</p>
+        <p class="mb-2"><strong>JSON 数据格式模板:</strong></p>
+        <pre class="bg-indigo-900 text-indigo-100 p-3 rounded text-xs overflow-x-auto leading-relaxed"><code>{
+  "title": "自定义通知标题",
+  "content": "这里是你想发送的具体通知内容", 
+  "symbol": "{{ticker}}", 
+  "price": "{{close}}",   
+  "time": "{{timenow}}"   
+}</code></pre>
+        <ul class="list-disc pl-5 mt-3 text-xs text-indigo-600 space-y-1">
+          <li><strong>密钥配置：</strong>调用前请前往 <strong>系统配置 -> 第三方 API 访问令牌</strong> 中设置密钥。</li>
+          <li><strong>必填参数：</strong>JSON 中必须包含 <code>content</code> 字段。</li>
+          <li><strong>⚠️ TradingView 设置注意：</strong>占位符(如 <code>{{ticker}}</code>)必须单独作为字段值，<strong>不要与中文写在同一行</strong>，具体文字请写在 <code>content</code> 字段中。</li>
+        </ul>
+      </div>
+    </div>
+
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-2xl font-bold text-gray-800">\u8BA2\u9605\u5217\u8868</h2>
       <div class="flex items-center space-x-4">
@@ -1865,6 +1897,17 @@ console.log('expiry.toString():', expiry.toString());
     }
     
     window.addEventListener('load', loadSubscriptions);
+    
+    // API 说明展开/折叠逻辑
+    const apiToggle = document.getElementById('apiInstructionToggle');
+    if (apiToggle) {
+      apiToggle.addEventListener('click', function() {
+        const content = document.getElementById('apiInstructionContent');
+        const icon = document.getElementById('apiInstructionIcon');
+        content.classList.toggle('hidden');
+        icon.style.transform = content.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
+      });
+    }
   <\/script>
 </body>
 </html>
@@ -1875,7 +1918,7 @@ var configPage = `
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>\u7CFB\u7EDF\u914D\u7F6E - \u8BA2\u9605\u7BA1\u7406\u7CFB\u7EDF</title>
+  <title>\u7CFB\u7EDF\u914D\u7F6E - API 消息中转中心</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
   <style>
@@ -1918,8 +1961,8 @@ var configPage = `
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex justify-between h-16">
         <div class="flex items-center">
-          <i class="fas fa-calendar-check text-indigo-600 text-2xl mr-2"></i>
-          <span class="font-bold text-xl text-gray-800">\u8BA2\u9605\u7BA1\u7406\u7CFB\u7EDF</span>
+        <i class="fas fa-paper-plane text-indigo-600 text-2xl mr-2"></i>
+        <span class="font-bold text-xl text-gray-800">API 消息中转中心</span>
         </div>
         <div class="flex items-center space-x-4">
           <a href="/admin" class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
@@ -2525,8 +2568,31 @@ var api = {
             headers: { "Content-Type": "application/json" }
           });
         }
-        const title = body.title || body.subject || "\u7B2C\u4E09\u65B9\u901A\u77E5";
-        const content = body.content || body.message || body.alert_message || body.raw || "";
+            
+            let title = body.title || body.subject || "";
+            let rawContent = body.content || body["content "] || body.message || body.alert_message || body.raw || "";
+            
+            const symbol = body.symbol || "";
+            const price = body.price || "";
+            const time = body.time || "";
+            
+            if (!title && symbol) {
+              title = `TradingView \u8B66\u62A5: ${symbol}`;
+            }
+            if (!title) {
+              title = "\u7B2C\u4E09\u65B9\u901A\u77E5";
+            }
+            
+            let extraInfo = [];
+            if (symbol) extraInfo.push(`\u4EA4\u6613\u5BF9: ${symbol}`);
+            if (price) extraInfo.push(`\u5F53\u524D\u4EF7\u683C: ${price}`);
+            if (time) extraInfo.push(`\u89E6\u53D1\u65F6\u95F4: ${time}`);
+            
+            let content = rawContent;
+            if (extraInfo.length > 0) {
+              content = content ? `${content}\n\n${extraInfo.join("\n")}` : extraInfo.join("\n");
+            }
+            
         if (!content) {
           return new Response(
             JSON.stringify({ message: "\u7F3A\u5C11\u5FC5\u586B\u53C2\u6570 content/message/alert_message" }),
