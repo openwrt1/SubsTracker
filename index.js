@@ -3531,10 +3531,7 @@ ${commonContent}`;
   if (config.ENABLED_NOTIFIERS.includes("telegram")) {
     const telegramContent = `*${title}*
 
-${commonContent.replace(
-      /(\s)/g,
-      " "
-    )}`;
+${commonContent}`;
     const success = await sendTelegramNotification(telegramContent, config);
     console.log(`${logPrefix} \u53D1\u9001Telegram\u901A\u77E5 ${success ? "\u6210\u529F" : "\u5931\u8D25"}`);
   }
@@ -3587,7 +3584,7 @@ async function sendTelegramNotification(message, config) {
     }
     console.log("[Telegram] \u5F00\u59CB\u53D1\u9001\u901A\u77E5\u5230 Chat ID: " + config.TG_CHAT_ID);
     const url = "https://api.telegram.org/bot" + config.TG_BOT_TOKEN + "/sendMessage";
-    const response = await fetch(url, {
+    let response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -3596,7 +3593,20 @@ async function sendTelegramNotification(message, config) {
         parse_mode: "Markdown"
       })
     });
-    const result = await response.json();
+    let result = await response.json();
+    if (!result.ok) {
+      console.warn("[Telegram] Markdown模式发送失败，自动降级为纯文本重试:", result.description);
+      const plainMessage = message.replace(/^\*([^*]+)\*\n\n/, "$1\n\n");
+      response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: config.TG_CHAT_ID,
+          text: plainMessage
+        })
+      });
+      result = await response.json();
+    }
     console.log("[Telegram] \u53D1\u9001\u7ED3\u679C:", result);
     return result.ok;
   } catch (error) {
